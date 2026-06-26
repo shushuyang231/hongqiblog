@@ -3,8 +3,19 @@ import { supabase } from "@/lib/supabase"
 import type { Post } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Trash2 } from "lucide-react"
 import { CommentSection } from "./CommentSection"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const SAMPLE_POSTS: Post[] = [
   {
@@ -56,11 +67,13 @@ const SAMPLE_POSTS: Post[] = [
 interface BlogPostProps {
   postId: string
   onBack: () => void
+  onDeleted: () => void
 }
 
-export function BlogPost({ postId, onBack }: BlogPostProps) {
+export function BlogPost({ postId, onBack, onDeleted }: BlogPostProps) {
   const initialPost = SAMPLE_POSTS.find((p) => p.id === postId) ?? null
   const [post, setPost] = useState<Post | null>(initialPost)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -89,6 +102,17 @@ export function BlogPost({ postId, onBack }: BlogPostProps) {
     return () => { cancelled = true }
   }, [postId])
 
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const { error } = await supabase.from("posts").delete().eq("id", postId)
+      if (error) throw error
+      onDeleted()
+    } catch {
+      setDeleting(false)
+    }
+  }
+
   if (!post) return null
 
   return (
@@ -102,15 +126,49 @@ export function BlogPost({ postId, onBack }: BlogPostProps) {
           }}
         />
         <div className="mx-auto max-w-3xl px-4 py-10 sm:py-16">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onBack}
-            className="mb-6 border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
-          >
-            <ArrowLeft className="mr-1 size-4" />
-            返回
-          </Button>
+          <div className="mb-6 flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onBack}
+              className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+            >
+              <ArrowLeft className="mr-1 size-4" />
+              返回
+            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={deleting}
+                  className="border-destructive/40 bg-transparent text-white hover:bg-destructive hover:text-white"
+                >
+                  <Trash2 className="mr-1 size-4" />
+                  删除文章
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>删除这篇文章？</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    此操作不可撤销。文章及其所有评论将被永久删除。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={deleting}
+                    onClick={handleDelete}
+                  >
+                    {deleting ? "删除中…" : "确认删除"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
 
           <div className="flex flex-wrap gap-2 mb-4">
             {post.tags.map((tag) => (

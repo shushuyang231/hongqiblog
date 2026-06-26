@@ -2,13 +2,18 @@ import { useState } from "react"
 import { HeroSection } from "@/components/HeroSection"
 import { BlogList } from "@/components/BlogList"
 import { BlogPost } from "@/components/BlogPost"
+import { PostEditor } from "@/components/PostEditor"
 import { ModeToggle } from "@/components/mode-toggle"
+import { Button } from "@/components/ui/button"
+import { PenSquare } from "lucide-react"
+import type { Post } from "@/lib/types"
 
-type View = "list" | "post"
+type View = "list" | "post" | "editor"
 
 export function App() {
   const [view, setView] = useState<View>("list")
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   function handleSelectPost(id: string) {
     setSelectedPostId(id)
@@ -17,6 +22,20 @@ export function App() {
   }
 
   function handleBack() {
+    setView("list")
+    setSelectedPostId(null)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  function handlePublished(_post: Post) {
+    setRefreshKey((k) => k + 1)
+    setView("list")
+    setSelectedPostId(null)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  function handleDeleted() {
+    setRefreshKey((k) => k + 1)
     setView("list")
     setSelectedPostId(null)
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -35,6 +54,19 @@ export function App() {
           </button>
 
           <div className="flex items-center gap-3">
+            {view !== "editor" && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setView("editor")
+                  window.scrollTo({ top: 0, behavior: "smooth" })
+                }}
+                className="bg-red-flag border-2 border-yellow-star text-white font-black uppercase tracking-wider transition-all hover:bg-red-flag/90 active:scale-95 active:ring-4 active:ring-yellow-star/40"
+              >
+                <PenSquare className="mr-1 size-4" />
+                发布文章
+              </Button>
+            )}
             <div className="hidden h-4 w-px bg-border sm:block" />
             <ModeToggle />
           </div>
@@ -44,12 +76,20 @@ export function App() {
       {view === "list" && (
         <>
           <HeroSection />
-          <BlogList onSelectPost={handleSelectPost} />
+          <BlogList key={refreshKey} onSelectPost={handleSelectPost} />
         </>
       )}
 
       {view === "post" && selectedPostId && (
-        <BlogPost postId={selectedPostId} onBack={handleBack} />
+        <BlogPost
+          postId={selectedPostId}
+          onBack={handleBack}
+          onDeleted={handleDeleted}
+        />
+      )}
+
+      {view === "editor" && (
+        <PostEditor onPublished={handlePublished} onBack={handleBack} />
       )}
 
       <footer className="border-t-2 border-red-flag bg-carbon">
