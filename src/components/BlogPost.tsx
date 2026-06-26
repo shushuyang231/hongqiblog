@@ -66,11 +66,12 @@ const SAMPLE_POSTS: Post[] = [
 
 interface BlogPostProps {
   postId: string
+  isAdmin: boolean
   onBack: () => void
   onDeleted: () => void
 }
 
-export function BlogPost({ postId, onBack, onDeleted }: BlogPostProps) {
+export function BlogPost({ postId, isAdmin, onBack, onDeleted }: BlogPostProps) {
   const initialPost = SAMPLE_POSTS.find((p) => p.id === postId) ?? null
   const [post, setPost] = useState<Post | null>(initialPost)
   const [deleting, setDeleting] = useState(false)
@@ -137,37 +138,39 @@ export function BlogPost({ postId, onBack, onDeleted }: BlogPostProps) {
               返回
             </Button>
 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={deleting}
-                  className="border-destructive/40 bg-transparent text-white hover:bg-destructive hover:text-white"
-                >
-                  <Trash2 className="mr-1 size-4" />
-                  删除文章
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>删除这篇文章？</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    此操作不可撤销。文章及其所有评论将被永久删除。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
+            {isAdmin && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     disabled={deleting}
-                    onClick={handleDelete}
+                    className="border-destructive/40 bg-transparent text-white hover:bg-destructive hover:text-white"
                   >
-                    {deleting ? "删除中…" : "确认删除"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <Trash2 className="mr-1 size-4" />
+                    删除文章
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>删除这篇文章？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      此操作不可撤销。文章及其所有评论将被永久删除。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      disabled={deleting}
+                      onClick={handleDelete}
+                    >
+                      {deleting ? "删除中…" : "确认删除"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2 mb-4">

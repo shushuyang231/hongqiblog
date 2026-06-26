@@ -1,11 +1,14 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import type { Session } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabase"
 import { HeroSection } from "@/components/HeroSection"
 import { BlogList } from "@/components/BlogList"
 import { BlogPost } from "@/components/BlogPost"
 import { PostEditor } from "@/components/PostEditor"
+import { LoginDialog } from "@/components/LoginDialog"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Button } from "@/components/ui/button"
-import { PenSquare } from "lucide-react"
+import { PenSquare, LogIn, LogOut } from "lucide-react"
 import type { Post } from "@/lib/types"
 
 type View = "list" | "post" | "editor"
@@ -14,6 +17,20 @@ export function App() {
   const [view, setView] = useState<View>("list")
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [session, setSession] = useState<Session | null>(null)
+  const [loginOpen, setLoginOpen] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   function handleSelectPost(id: string) {
     setSelectedPostId(id)
@@ -41,6 +58,22 @@ export function App() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  function handlePublishClick() {
+    if (!session) {
+      setLoginOpen(true)
+      return
+    }
+    setView("editor")
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    if (view === "editor") {
+      setView("list")
+    }
+  }
+
   return (
     <div className="min-h-svh bg-background">
       <nav className="sticky top-0 z-50 border-b-2 border-red-flag bg-background/95 backdrop-blur-sm">
@@ -57,16 +90,37 @@ export function App() {
             {view !== "editor" && (
               <Button
                 size="sm"
-                onClick={() => {
-                  setView("editor")
-                  window.scrollTo({ top: 0, behavior: "smooth" })
-                }}
+                onClick={handlePublishClick}
                 className="bg-red-flag border-2 border-yellow-star text-white font-black uppercase tracking-wider transition-all hover:bg-red-flag/90 active:scale-95 active:ring-4 active:ring-yellow-star/40"
               >
                 <PenSquare className="mr-1 size-4" />
                 发布文章
               </Button>
             )}
+
+            {session ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleLogout}
+                className="text-muted-foreground hover:text-foreground"
+                title="退出登录"
+              >
+                <LogOut className="size-4" />
+                <span className="hidden sm:inline ml-1">退出</span>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setLoginOpen(true)}
+                className="text-muted-foreground hover:text-foreground"
+                title="管理员登录"
+              >
+                <LogIn className="size-4" />
+              </Button>
+            )}
+
             <div className="hidden h-4 w-px bg-border sm:block" />
             <ModeToggle />
           </div>
@@ -83,14 +137,24 @@ export function App() {
       {view === "post" && selectedPostId && (
         <BlogPost
           postId={selectedPostId}
+          isAdmin={!!session}
           onBack={handleBack}
           onDeleted={handleDeleted}
         />
       )}
 
-      {view === "editor" && (
+      {view === "editor" && session && (
         <PostEditor onPublished={handlePublished} onBack={handleBack} />
       )}
+
+      <LoginDialog
+        open={loginOpen}
+        onOpenChange={setLoginOpen}
+        onSuccess={() => {
+          setView("editor")
+          window.scrollTo({ top: 0, behavior: "smooth" })
+        }}
+      />
 
       <footer className="border-t-2 border-red-flag bg-carbon">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
